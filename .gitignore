@@ -14,6 +14,7 @@
 doxysonnet
 jsonnet
 jsonnetfmt
+rstsonnet
 _jsonnet.so
 libjsonnet.so
 libjsonnet.so.*

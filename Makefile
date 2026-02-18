@@ -130,12 +130,14 @@ BINS_SRC := \
 	cmd/utils.cpp \
 	cmd/jsonnetfmt.cpp \
 	cmd/jsonnet.cpp \
-	cmd/doxysonnet.cpp
+	cmd/doxysonnet.cpp \
+	cmd/rstsonnet.cpp
 
 BINS := \
 	jsonnet \
 	jsonnetfmt \
-	doxysonnet
+	doxysonnet \
+	rstsonnet
 
 MAN_PAGES := $(addprefix $(MAN1_DIR)/,$(addsuffix .1,$(BINS)))
 
@@ -242,6 +244,9 @@ jsonnetfmt: .makebuild/cmd/jsonnetfmt.cpp.o .makebuild/cmd/utils.cpp.o $(LIB_OBJ
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 doxysonnet: .makebuild/cmd/doxysonnet.cpp.o
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+
+rstsonnet: .makebuild/cmd/rstsonnet.cpp.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 libjsonnet.so.$(VERSION): $(LIB_OBJ)

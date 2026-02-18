@@ -292,6 +292,14 @@ if(BUILD_SOME_BINARIES)
     install(TARGETS doxysonnet)
 endif()
 
+#### rstsonnet - Jsonnet to ReST documentation
+#
+if(BUILD_SOME_BINARIES)
+    add_executable(rstsonnet cmd/rstsonnet.cpp)
+    configure_target_cc_props(rstsonnet)
+    install(TARGETS rstsonnet)
+endif()
+
 #### GoogleTest based tests.
 #
 

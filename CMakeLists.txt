@@ -284,6 +284,14 @@ if(BUILD_JSONNETFMT OR BUILD_TESTS)
     endif()
 endif()
 
+#### doxysonnet - Jsonnet to Doxygen doc filter
+#
+if(BUILD_SOME_BINARIES)
+    add_executable(doxysonnet cmd/doxysonnet.cpp)
+    configure_target_cc_props(doxysonnet)
+    install(TARGETS doxysonnet)
+endif()
+
 #### GoogleTest based tests.
 #
 

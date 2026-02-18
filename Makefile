@@ -129,11 +129,13 @@ LIB_CPP_OBJ := $(LIB_OBJ) $(addprefix .makebuild/,$(addsuffix .o,$(LIB_CPP_SRC))
 BINS_SRC := \
 	cmd/utils.cpp \
 	cmd/jsonnetfmt.cpp \
-	cmd/jsonnet.cpp
+	cmd/jsonnet.cpp \
+	cmd/doxysonnet.cpp
 
 BINS := \
 	jsonnet \
-	jsonnetfmt
+	jsonnetfmt \
+	doxysonnet
 
 MAN_PAGES := $(addprefix $(MAN1_DIR)/,$(addsuffix .1,$(BINS)))
 
@@ -237,6 +239,9 @@ jsonnet: .makebuild/cmd/jsonnet.cpp.o .makebuild/cmd/utils.cpp.o $(LIB_OBJ)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 jsonnetfmt: .makebuild/cmd/jsonnetfmt.cpp.o .makebuild/cmd/utils.cpp.o $(LIB_OBJ)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+
+doxysonnet: .makebuild/cmd/doxysonnet.cpp.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 libjsonnet.so.$(VERSION): $(LIB_OBJ)

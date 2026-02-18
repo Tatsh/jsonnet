@@ -11,6 +11,7 @@
 *.dSYM
 .makebuild/
 
+doxysonnet
 jsonnet
 jsonnetfmt
 _jsonnet.so

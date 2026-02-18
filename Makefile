@@ -133,6 +133,9 @@ BINS_SRC := \
 	cmd/doxysonnet.cpp \
 	cmd/rstsonnet.cpp
 
+# Shared by doxysonnet and rstsonnet
+DOCSONNET_COMMON_SRC := cmd/jsonnet_doc_scan.cpp
+
 BINS := \
 	jsonnet \
 	jsonnetfmt \
@@ -169,7 +172,7 @@ PLAIN_TEST_BINS := $(basename $(notdir $(PLAIN_TEST_SRC)))
 GTEST_TEST_BINS := $(basename $(notdir $(GTEST_TEST_SRC)))
 ALL_TEST_BINS := $(PLAIN_TEST_BINS) $(GTEST_TEST_BINS)
 
-DEPS_FILES := $(addprefix .makebuild/,$(addsuffix .d,$(LIB_SRC) $(LIB_CPP_SRC) $(BINS_SRC) $(TEST_SRC)))
+DEPS_FILES := $(addprefix .makebuild/,$(addsuffix .d,$(LIB_SRC) $(LIB_CPP_SRC) $(BINS_SRC) $(DOCSONNET_COMMON_SRC) $(TEST_SRC)))
 # Intermediate build output directories.
 BUILD_DIRS := $(sort $(dir $(DEPS_FILES)) .makebuild/stdlib/)
 
@@ -243,10 +246,10 @@ jsonnet: .makebuild/cmd/jsonnet.cpp.o .makebuild/cmd/utils.cpp.o $(LIB_OBJ)
 jsonnetfmt: .makebuild/cmd/jsonnetfmt.cpp.o .makebuild/cmd/utils.cpp.o $(LIB_OBJ)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
-doxysonnet: .makebuild/cmd/doxysonnet.cpp.o
+doxysonnet: .makebuild/cmd/doxysonnet.cpp.o .makebuild/cmd/jsonnet_doc_scan.cpp.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
-rstsonnet: .makebuild/cmd/rstsonnet.cpp.o
+rstsonnet: .makebuild/cmd/rstsonnet.cpp.o .makebuild/cmd/jsonnet_doc_scan.cpp.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 libjsonnet.so.$(VERSION): $(LIB_OBJ)

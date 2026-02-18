@@ -284,19 +284,25 @@ if(BUILD_JSONNETFMT OR BUILD_TESTS)
     endif()
 endif()
 
+#### doxysonnet / rstsonnet - shared Jsonnet doc scanning
+#
+set(JSONNET_DOC_SCAN_SOURCES cmd/jsonnet_doc_scan.cpp)
+
 #### doxysonnet - Jsonnet to Doxygen doc filter
 #
 if(BUILD_SOME_BINARIES)
-    add_executable(doxysonnet cmd/doxysonnet.cpp)
+    add_executable(doxysonnet cmd/doxysonnet.cpp ${JSONNET_DOC_SCAN_SOURCES})
     configure_target_cc_props(doxysonnet)
+    target_include_directories(doxysonnet PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/cmd)
     install(TARGETS doxysonnet)
 endif()
 
 #### rstsonnet - Jsonnet to ReST documentation
 #
 if(BUILD_SOME_BINARIES)
-    add_executable(rstsonnet cmd/rstsonnet.cpp)
+    add_executable(rstsonnet cmd/rstsonnet.cpp ${JSONNET_DOC_SCAN_SOURCES})
     configure_target_cc_props(rstsonnet)
+    target_include_directories(rstsonnet PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/cmd)
     install(TARGETS rstsonnet)
 endif()
 

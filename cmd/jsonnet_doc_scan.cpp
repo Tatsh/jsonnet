@@ -90,6 +90,82 @@ std::string extract_var_type(std::string &doc) {
   return found_type;
 }
 
+std::string extract_rv_type(std::string &doc) {
+  std::istringstream is(doc);
+  std::string line;
+  std::string out_doc;
+  std::string found_type;
+  bool first = true;
+  while (std::getline(is, line)) {
+    std::string trimmed = trim_line_for_var(line);
+    if (found_type.empty() && trimmed.size() >= 4 &&
+        trimmed.compare(0, 4, "@rv ") == 0) {
+      size_t start = 4;
+      while (start < trimmed.size() &&
+             (trimmed[start] == ' ' || trimmed[start] == '\t'))
+        start++;
+      size_t end = start;
+      while (end < trimmed.size() && trimmed[end] != ' ' && trimmed[end] != '\t')
+        end++;
+      found_type = trimmed.substr(start, end - start);
+      if (found_type == "bool")
+        found_type = "boolean";
+      continue;
+    }
+    if (!first)
+      out_doc += '\n';
+    first = false;
+    out_doc += line;
+  }
+  if (!found_type.empty())
+    doc = out_doc;
+  return found_type;
+}
+
+std::vector<std::string> extract_pt_types(std::string &doc) {
+  std::istringstream is(doc);
+  std::string line;
+  std::string out_doc;
+  std::vector<std::string> found_types;
+  bool first = true;
+  while (std::getline(is, line)) {
+    std::string trimmed = trim_line_for_var(line);
+    if (found_types.empty() && trimmed.size() >= 4 &&
+        trimmed.compare(0, 4, "@pt ") == 0) {
+      size_t pos = 4;
+      while (pos < trimmed.size()) {
+        while (pos < trimmed.size() &&
+               (trimmed[pos] == ' ' || trimmed[pos] == '\t'))
+          pos++;
+        if (pos >= trimmed.size())
+          break;
+        size_t start = pos;
+        while (pos < trimmed.size() && trimmed[pos] != ',')
+          pos++;
+        size_t end = pos;
+        while (end > start && (trimmed[end - 1] == ' ' || trimmed[end - 1] == '\t'))
+          end--;
+        if (end > start) {
+          std::string t = trimmed.substr(start, end - start);
+          if (t == "bool")
+            t = "boolean";
+          found_types.push_back(t);
+        }
+        if (pos < trimmed.size())
+          pos++;
+      }
+      continue;
+    }
+    if (!first)
+      out_doc += '\n';
+    first = false;
+    out_doc += line;
+  }
+  if (!found_types.empty())
+    doc = out_doc;
+  return found_types;
+}
+
 std::string sanitize_id(const std::string &key) {
   std::string out;
   for (size_t i = 0; i < key.size(); i++) {

@@ -112,9 +112,16 @@ void emit_doxygen(const std::string &filename, const std::string &content,
       stack.pop_back();
     }
     std::string name = jsonnet_doc::sanitize_id(dk.key);
-    if (!dk.doc.empty()) {
+    std::string doc_for_comment = dk.doc;
+    std::string rv_type;
+    std::vector<std::string> pt_types;
+    if (dk.type == "function") {
+      rv_type = jsonnet_doc::extract_rv_type(doc_for_comment);
+      pt_types = jsonnet_doc::extract_pt_types(doc_for_comment);
+    }
+    if (!doc_for_comment.empty()) {
       out << "/**\n";
-      std::istringstream is(dk.doc);
+      std::istringstream is(doc_for_comment);
       std::string line;
       while (std::getline(is, line))
         out << " * " << escape_comment_line(line) << "\n";
@@ -124,10 +131,11 @@ void emit_doxygen(const std::string &filename, const std::string &content,
       out << "namespace " << name << " {\n\n";
       stack.push_back(dk.key);
     } else if (dk.type == "function") {
-      out << "mixed " << name << "(";
+      out << cpp_type(rv_type.empty() ? "mixed" : rv_type) << " " << name << "(";
       std::istringstream ps(dk.function_params);
       std::string p;
       bool first = true;
+      size_t param_idx = 0;
       while (std::getline(ps, p, ',')) {
         size_t start = 0;
         while (start < p.size() && (p[start] == ' ' || p[start] == '\t'))
@@ -139,8 +147,11 @@ void emit_doxygen(const std::string &filename, const std::string &content,
         if (!p.empty()) {
           if (!first)
             out << ", ";
-          out << "mixed " << jsonnet_doc::sanitize_id(p);
+          std::string param_type =
+              param_idx < pt_types.size() ? pt_types[param_idx] : "mixed";
+          out << cpp_type(param_type) << " " << jsonnet_doc::sanitize_id(p);
           first = false;
+          param_idx++;
         }
       }
       out << ");\n\n";

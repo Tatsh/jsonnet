@@ -34,6 +34,16 @@ bool is_file_block(const std::string &block);
  */
 std::string extract_var_type(std::string &doc);
 
+/** If doc contains a line \"@rv <type>\", remove that line from doc and return the type
+ *  (normalized: \"bool\" -> \"boolean\"); otherwise return empty string.
+ */
+std::string extract_rv_type(std::string &doc);
+
+/** If doc contains a line \"@pt type1, type2, ...\", remove that line from doc and
+ *  return the comma-separated types in order; otherwise return empty vector.
+ */
+std::vector<std::string> extract_pt_types(std::string &doc);
+
 /** Sanitize a key for use as identifier (C++ or ReST). */
 std::string sanitize_id(const std::string &key);
 

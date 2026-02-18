@@ -25,6 +25,7 @@ limitations under the License.
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -44,7 +45,7 @@ const char *md_type(const std::string &type) {
 }
 
 void emit_markdown(const std::string &filename, const std::string &content,
-                   std::ostream &out, bool include_private) {
+                   std::ostream &out, bool include_private, int width) {
   jsonnet_doc::ScanState s{content};
   jsonnet_doc::scan_file(s);
 
@@ -76,7 +77,7 @@ void emit_markdown(const std::string &filename, const std::string &content,
     std::istringstream is(file_intro);
     std::string line;
     while (std::getline(is, line))
-      out << line << "\n";
+      jsonnet_doc::wrap_lines(out, line, width, 0, 0);
     out << "\n";
   }
 
@@ -124,18 +125,13 @@ void emit_markdown(const std::string &filename, const std::string &content,
         std::istringstream is(dk.doc);
         std::string line;
         while (std::getline(is, line))
-          out << line << "\n";
+          jsonnet_doc::wrap_lines(out, line, width, 0, 0);
         out << "\n";
       }
     } else {
       out << std::string(level, '#') << " " << title << "\n\n";
-      if (!dk.doc.empty()) {
-        std::istringstream is(dk.doc);
-        std::string line;
-        while (std::getline(is, line))
-          out << line << "\n";
-        out << "\n";
-      }
+      if (!dk.doc.empty())
+        jsonnet_doc::wrap_lines(out, dk.doc, width, 0, 0);
       out << "*Type:* " << md_type(dk.type) << "\n\n";
     }
   }
@@ -143,13 +139,59 @@ void emit_markdown(const std::string &filename, const std::string &content,
 
 }  // namespace
 
+static bool parse_width(const std::string &val, const char *opt_name,
+                        int *out) {
+  try {
+    size_t pos;
+    int n = std::stoi(val, &pos);
+    if (pos != val.size())
+      throw std::invalid_argument("");
+    if (n == -1 || n == 0) {
+      *out = 0;
+      return true;
+    }
+    if (n < 0) {
+      std::cerr << "mdsonnet: invalid " << opt_name << " value \"" << val
+                << "\" (only 0 or -1 allowed for infinite width)\n";
+      return false;
+    }
+    *out = n;
+    return true;
+  } catch (...) {
+    std::cerr << "mdsonnet: invalid " << opt_name << " value \"" << val
+              << "\"\n";
+    return false;
+  }
+}
+
 int main(int argc, char **argv) {
   bool include_private = false;
+  int width = 100;
   std::vector<std::string> files;
   for (int i = 1; i < argc; i++) {
     std::string arg = argv[i];
     if (arg == "--include-private") {
       include_private = true;
+      continue;
+    }
+    if (arg.compare(0, 8, "--width=") == 0) {
+      if (!parse_width(arg.substr(8), "--width", &width))
+        return 1;
+      continue;
+    }
+    if (arg == "--width" && i + 1 < argc) {
+      if (!parse_width(argv[++i], "--width", &width))
+        return 1;
+      continue;
+    }
+    if (arg == "-w" && i + 1 < argc) {
+      if (!parse_width(argv[++i], "-w", &width))
+        return 1;
+      continue;
+    }
+    if (arg.compare(0, 2, "-w") == 0 && arg.size() > 2) {
+      if (!parse_width(arg.substr(2), "-w", &width))
+        return 1;
       continue;
     }
     if (!arg.empty() && arg[0] == '-') {
@@ -159,8 +201,9 @@ int main(int argc, char **argv) {
     files.push_back(arg);
   }
   if (files.empty()) {
-    std::cerr << "Usage: mdsonnet [--include-private] <file.jsonnet> [file2.jsonnet ...]\n";
+    std::cerr << "Usage: mdsonnet [--include-private] [-w N|--width=N] <file.jsonnet> [file2.jsonnet ...]\n";
     std::cerr << "Reads Jsonnet files and writes Markdown to stdout.\n";
+    std::cerr << "  -w N, --width=N    Max line length for wrapping (default: 100). 0 or -1 = no wrap.\n";
     std::cerr << "By default, keys with a leading _ or with no Doxygen comment are omitted.\n";
     std::cerr << "Pass --include-private to include them.\n";
     return 1;
@@ -178,7 +221,7 @@ int main(int argc, char **argv) {
     std::string content((std::istreambuf_iterator<char>(f)),
                         std::istreambuf_iterator<char>());
     f.close();
-    emit_markdown(path, content, std::cout, include_private);
+    emit_markdown(path, content, std::cout, include_private, width);
     if (i + 1 < files.size())
       std::cout << "\n";
   }

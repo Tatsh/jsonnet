@@ -453,4 +453,43 @@ std::string scope_path(const std::vector<std::string> &path,
   return out;
 }
 
+void wrap_lines(std::ostream &out, const std::string &text, int width,
+                int first_indent, int cont_indent) {
+  std::istringstream is(text);
+  std::string para;
+  while (std::getline(is, para)) {
+    if (width <= 0) {
+      out << std::string(first_indent, ' ') << para << '\n';
+      continue;
+    }
+    const int max_first = width - first_indent;
+    const int max_cont = width - cont_indent;
+    if (max_first <= 0 && max_cont <= 0) {
+      out << std::string(first_indent, ' ') << para << '\n';
+      continue;
+    }
+    int col = first_indent;
+    out << std::string(first_indent, ' ');
+    std::istringstream ws(para);
+    std::string word;
+    bool first_word = true;
+    while (ws >> word) {
+      int need = static_cast<int>(word.size());
+      if (!first_word)
+        need += 1;
+      if (col > first_indent && col + need > width) {
+        out << '\n' << std::string(cont_indent, ' ');
+        col = cont_indent;
+        need = static_cast<int>(word.size());
+      }
+      if (col > first_indent)
+        out << ' ';
+      out << word;
+      col += need;
+      first_word = false;
+    }
+    out << '\n';
+  }
+}
+
 }  // namespace jsonnet_doc

@@ -17,6 +17,7 @@ limitations under the License.
 #ifndef JSONNET_CMD_JSONNET_DOC_SCAN_H
 #define JSONNET_CMD_JSONNET_DOC_SCAN_H
 
+#include <ostream>
 #include <string>
 #include <vector>
 
@@ -73,6 +74,12 @@ bool should_skip_key(const DocKey &dk, bool include_private);
 /** Build scope path string (e.g. "root::server::port" for C++). */
 std::string scope_path(const std::vector<std::string> &path,
                        const std::string &key);
+
+/** Word-wrap text to at most width chars per line; write to out.
+ * first_indent and cont_indent are space counts for first and continuation lines.
+ */
+void wrap_lines(std::ostream &out, const std::string &text, int width,
+                int first_indent, int cont_indent);
 
 }  // namespace jsonnet_doc
 

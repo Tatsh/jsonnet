@@ -47,6 +47,49 @@ bool is_file_block(const std::string &block) {
   return n.find("@file") != std::string::npos;
 }
 
+static std::string trim_line_for_var(const std::string &line) {
+  size_t i = 0;
+  while (i < line.size() && (line[i] == ' ' || line[i] == '\t'))
+    i++;
+  if (i < line.size() && line[i] == '*')
+    i++;
+  if (i < line.size() && line[i] == ' ')
+    i++;
+  return line.substr(i);
+}
+
+std::string extract_var_type(std::string &doc) {
+  std::istringstream is(doc);
+  std::string line;
+  std::string out_doc;
+  std::string found_type;
+  bool first = true;
+  while (std::getline(is, line)) {
+    std::string trimmed = trim_line_for_var(line);
+    if (found_type.empty() && trimmed.size() >= 5 &&
+        trimmed.compare(0, 5, "@var ") == 0) {
+      size_t start = 5;
+      while (start < trimmed.size() &&
+             (trimmed[start] == ' ' || trimmed[start] == '\t'))
+        start++;
+      size_t end = start;
+      while (end < trimmed.size() && trimmed[end] != ' ' && trimmed[end] != '\t')
+        end++;
+      found_type = trimmed.substr(start, end - start);
+      if (found_type == "bool")
+        found_type = "boolean";
+      continue;
+    }
+    if (!first)
+      out_doc += '\n';
+    first = false;
+    out_doc += line;
+  }
+  if (!found_type.empty())
+    doc = out_doc;
+  return found_type;
+}
+
 std::string sanitize_id(const std::string &key) {
   std::string out;
   for (size_t i = 0; i < key.size(); i++) {

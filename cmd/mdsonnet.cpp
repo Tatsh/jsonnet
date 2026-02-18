@@ -35,19 +35,10 @@ limitations under the License.
 
 namespace {
 
-const char *md_type(const std::string &type) {
-  if (type == "number") return "number";
-  if (type == "string") return "string";
-  if (type == "boolean") return "boolean";
-  if (type == "object") return "object";
-  if (type == "array") return "array";
-  return "mixed";
-}
-
 void emit_markdown(const std::string &filename, const std::string &content,
                    std::ostream &out, bool include_private, int width) {
   jsonnet_doc::ScanState s{content};
-  jsonnet_doc::scan_file(s);
+  jsonnet_doc::parse_file_to_doc_state(filename, content, s);
 
   std::string file_title = filename;
   std::string file_intro;
@@ -132,7 +123,7 @@ void emit_markdown(const std::string &filename, const std::string &content,
       out << std::string(level, '#') << " " << title << "\n\n";
       if (!dk.doc.empty())
         jsonnet_doc::wrap_lines(out, dk.doc, width, 0, 0);
-      out << "*Type:* " << md_type(dk.type) << "\n\n";
+      out << "*Type:* " << dk.type << "\n\n";
     }
   }
 }

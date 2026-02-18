@@ -35,22 +35,35 @@ limitations under the License.
 
 namespace {
 
-const char *cpp_type(const std::string &type) {
-  if (type == "int") return "int";
-  if (type == "float") return "float";
-  if (type == "number") return "double";  // fallback if scanner didn't distinguish
-  if (type == "string") return "string";
+std::string cpp_type(const std::string &type) {
+  if (type == "number") return "double";
   if (type == "boolean") return "bool";
-  if (type == "function") return "mixed";  // function key, emit as declaration
-  if (type == "object") return "mixed";
-  if (type == "array") return "mixed";
-  return "mixed";
+  if (type == "function" || type == "object" || type == "array") return "mixed";
+  return type;
+}
+
+/** Escape star-slash and slash-star in comment lines so C++ block comment stays valid. */
+static std::string escape_comment_line(const std::string &line) {
+  std::string out;
+  out.reserve(line.size() + 4);
+  for (size_t i = 0; i < line.size(); ++i) {
+    if (i + 1 < line.size() && line[i] == '*' && line[i + 1] == '/') {
+      out += "* /";
+      i++;
+    } else if (i + 1 < line.size() && line[i] == '/' && line[i + 1] == '*') {
+      out += "/ *";
+      i++;
+    } else {
+      out += line[i];
+    }
+  }
+  return out;
 }
 
 void emit_doxygen(const std::string &filename, const std::string &content,
                   std::ostream &out, bool include_private) {
   jsonnet_doc::ScanState s{content};
-  jsonnet_doc::scan_file(s);
+  jsonnet_doc::parse_file_to_doc_state(filename, content, s);
 
   bool has_file_block = false;
   for (const auto &b : s.file_blocks) {
@@ -59,7 +72,7 @@ void emit_doxygen(const std::string &filename, const std::string &content,
       std::istringstream is(b.content);
       std::string line;
       while (std::getline(is, line))
-        out << " * " << line << "\n";
+        out << " * " << escape_comment_line(line) << "\n";
       out << " */\n\n";
       has_file_block = true;
       break;
@@ -88,6 +101,7 @@ void emit_doxygen(const std::string &filename, const std::string &content,
     i++;
   }
   out << "#line 1 \"" << line_name << "\"\n";
+  out << "namespace root {\n\n";
   std::vector<std::string> stack;
   for (const auto &dk : s.keys) {
     if (jsonnet_doc::should_skip_key(dk, include_private))
@@ -103,7 +117,7 @@ void emit_doxygen(const std::string &filename, const std::string &content,
       std::istringstream is(dk.doc);
       std::string line;
       while (std::getline(is, line))
-        out << " * " << line << "\n";
+        out << " * " << escape_comment_line(line) << "\n";
       out << " */\n";
     }
     if (dk.type == "object") {
@@ -138,6 +152,7 @@ void emit_doxygen(const std::string &filename, const std::string &content,
     out << "}\n\n";
     stack.pop_back();
   }
+  out << "}\n\n";  // close root namespace
 }
 
 }  // namespace

@@ -1,0 +1,15 @@
+{
+   "_internal": {
+      "_secret": true
+   },
+   "features": {
+      "api_version": "v1",
+      "debug": false
+   },
+   "no_doc_key": 42,
+   "server": {
+      "host": "localhost",
+      "port": 8080
+   },
+   "title": "My App"
+}

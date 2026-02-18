@@ -1,0 +1,28 @@
+/** @file doxysonnet_sample.jsonnet
+ *  Sample file for testing doxysonnet output.
+ */
+{
+  /** Server connection settings. */
+  server: {
+    /** Port number (1-65535). */
+    port: 8080,
+    /** Host name or IP. */
+    host: 'localhost',
+  },
+  /** Feature flags. */
+  features: {
+    /** Enable debug logging. */
+    debug: false,
+    /** API version string. */
+    api_version: 'v1',
+  },
+  /** Top-level title. */
+  title: 'My App',
+  // No comment - omitted by default
+  no_doc_key: 42,
+  /** This is private; omitted unless --include-private. */
+  _internal: {
+    /** Also hidden when parent is private. */
+    _secret: true,
+  },
+}

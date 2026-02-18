@@ -29,6 +29,11 @@ std::string normalize_doc_block(std::string block);
 /** True if block looks like a file-level @file block. */
 bool is_file_block(const std::string &block);
 
+/** If doc contains a line \"@var <type>\", remove that line from doc and return the type
+ *  (normalized: \"bool\" -> \"boolean\"); otherwise return empty string.
+ */
+std::string extract_var_type(std::string &doc);
+
 /** Sanitize a key for use as identifier (C++ or ReST). */
 std::string sanitize_id(const std::string &key);
 
@@ -63,8 +68,14 @@ struct ScanState {
   bool in_object = false;
 };
 
-/** Scan content and populate file_blocks and keys. */
+/** Scan content and populate file_blocks and keys (lightweight scanner). */
 void scan_file(ScanState &s);
+
+/** Parse content with the real Jsonnet parser and populate file_blocks and keys.
+ *  On parse error, leaves file_blocks and keys unchanged (no throw).
+ */
+void parse_file_to_doc_state(const std::string &filename, const std::string &content,
+                              ScanState &s);
 
 /** True if key or any path segment has a leading underscore (private). */
 bool path_or_key_has_underscore_prefix(const std::vector<std::string> &path,

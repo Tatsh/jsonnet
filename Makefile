@@ -136,6 +136,8 @@ BINS_SRC := \
 
 # Shared by doxysonnet and rstsonnet
 DOCSONNET_COMMON_SRC := cmd/jsonnet_doc_scan.cpp
+# Parser-based doc extraction (doxysonnet only)
+DOCPARSE_SRC := cmd/jsonnet_doc_parse.cpp
 
 BINS := \
 	jsonnet \
@@ -174,7 +176,7 @@ PLAIN_TEST_BINS := $(basename $(notdir $(PLAIN_TEST_SRC)))
 GTEST_TEST_BINS := $(basename $(notdir $(GTEST_TEST_SRC)))
 ALL_TEST_BINS := $(PLAIN_TEST_BINS) $(GTEST_TEST_BINS)
 
-DEPS_FILES := $(addprefix .makebuild/,$(addsuffix .d,$(LIB_SRC) $(LIB_CPP_SRC) $(BINS_SRC) $(DOCSONNET_COMMON_SRC) $(TEST_SRC)))
+DEPS_FILES := $(addprefix .makebuild/,$(addsuffix .d,$(LIB_SRC) $(LIB_CPP_SRC) $(BINS_SRC) $(DOCSONNET_COMMON_SRC) $(DOCPARSE_SRC) $(TEST_SRC)))
 # Intermediate build output directories.
 BUILD_DIRS := $(sort $(dir $(DEPS_FILES)) .makebuild/stdlib/)
 
@@ -222,6 +224,8 @@ CC_DEPS_FLAGS = -MMD -MP -MF "$(addsuffix .d,$@)"
 
 .makebuild/%.cpp.o: %.cpp
 	mkdir -p $(@D) && $(CXX) $(CC_DEPS_FLAGS) $(CXXFLAGS) -o $@ -c $<
+# Parser-based doc extraction needs core/ includes from project root
+.makebuild/cmd/jsonnet_doc_parse.cpp.o: CXXFLAGS += -I.
 .makebuild/%.c.o: %.c
 	mkdir -p $(@D) && $(CC) $(CC_DEPS_FLAGS) $(CFLAGS) -o $@ -c $<
 
@@ -248,13 +252,13 @@ jsonnet: .makebuild/cmd/jsonnet.cpp.o .makebuild/cmd/utils.cpp.o $(LIB_OBJ)
 jsonnetfmt: .makebuild/cmd/jsonnetfmt.cpp.o .makebuild/cmd/utils.cpp.o $(LIB_OBJ)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
-doxysonnet: .makebuild/cmd/doxysonnet.cpp.o .makebuild/cmd/jsonnet_doc_scan.cpp.o
+doxysonnet: .makebuild/cmd/doxysonnet.cpp.o .makebuild/cmd/jsonnet_doc_scan.cpp.o .makebuild/cmd/jsonnet_doc_parse.cpp.o $(LIB_OBJ)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
-rstsonnet: .makebuild/cmd/rstsonnet.cpp.o .makebuild/cmd/jsonnet_doc_scan.cpp.o
+rstsonnet: .makebuild/cmd/rstsonnet.cpp.o .makebuild/cmd/jsonnet_doc_scan.cpp.o .makebuild/cmd/jsonnet_doc_parse.cpp.o $(LIB_OBJ)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
-mdsonnet: .makebuild/cmd/mdsonnet.cpp.o .makebuild/cmd/jsonnet_doc_scan.cpp.o
+mdsonnet: .makebuild/cmd/mdsonnet.cpp.o .makebuild/cmd/jsonnet_doc_scan.cpp.o .makebuild/cmd/jsonnet_doc_parse.cpp.o $(LIB_OBJ)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 libjsonnet.so.$(VERSION): $(LIB_OBJ)

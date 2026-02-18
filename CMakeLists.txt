@@ -306,6 +306,15 @@ if(BUILD_SOME_BINARIES)
     install(TARGETS rstsonnet)
 endif()
 
+#### mdsonnet - Jsonnet to Markdown documentation
+#
+if(BUILD_SOME_BINARIES)
+    add_executable(mdsonnet cmd/mdsonnet.cpp ${JSONNET_DOC_SCAN_SOURCES})
+    configure_target_cc_props(mdsonnet)
+    target_include_directories(mdsonnet PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/cmd)
+    install(TARGETS mdsonnet)
+endif()
+
 #### GoogleTest based tests.
 #
 

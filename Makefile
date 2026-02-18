@@ -131,7 +131,8 @@ BINS_SRC := \
 	cmd/jsonnetfmt.cpp \
 	cmd/jsonnet.cpp \
 	cmd/doxysonnet.cpp \
-	cmd/rstsonnet.cpp
+	cmd/rstsonnet.cpp \
+	cmd/mdsonnet.cpp
 
 # Shared by doxysonnet and rstsonnet
 DOCSONNET_COMMON_SRC := cmd/jsonnet_doc_scan.cpp
@@ -140,7 +141,8 @@ BINS := \
 	jsonnet \
 	jsonnetfmt \
 	doxysonnet \
-	rstsonnet
+	rstsonnet \
+	mdsonnet
 
 MAN_PAGES := $(addprefix $(MAN1_DIR)/,$(addsuffix .1,$(BINS)))
 
@@ -250,6 +252,9 @@ doxysonnet: .makebuild/cmd/doxysonnet.cpp.o .makebuild/cmd/jsonnet_doc_scan.cpp.
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 rstsonnet: .makebuild/cmd/rstsonnet.cpp.o .makebuild/cmd/jsonnet_doc_scan.cpp.o
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+
+mdsonnet: .makebuild/cmd/mdsonnet.cpp.o .makebuild/cmd/jsonnet_doc_scan.cpp.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 libjsonnet.so.$(VERSION): $(LIB_OBJ)

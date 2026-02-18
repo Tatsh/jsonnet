@@ -121,6 +121,49 @@ static void skip_block_comment(ScanState &s) {
   }
 }
 
+/** Copy content of '(' ... ')' into out (excluding parens), then skip past ')'.
+ *  s.i must be at '(' on entry. Returns true if a group was consumed. */
+static bool copy_paren_group(ScanState &s, std::string &out) {
+  if (s.i >= s.src.size() || s.src[s.i] != '(')
+    return false;
+  size_t start = s.i + 1;
+  s.i++;
+  int depth = 1;
+  while (s.i < s.src.size() && depth > 0) {
+    char c = s.src[s.i];
+    if (c == '"' || c == '\'' || c == '|') {
+      if (c == '|') {
+        s.i++;
+        while (s.i < s.src.size() && s.src[s.i] != '|')
+          s.i++;
+        if (s.i < s.src.size())
+          s.i++;
+      } else {
+        char q = c;
+        s.i++;
+        while (s.i < s.src.size() &&
+               (s.src[s.i] != q || (s.i > 0 && s.src[s.i - 1] == '\\')))
+          s.i++;
+        if (s.i < s.src.size())
+          s.i++;
+      }
+      continue;
+    }
+    if (c == '(')
+      depth++;
+    else if (c == ')') {
+      depth--;
+      if (depth == 0) {
+        out = s.src.substr(start, s.i - start);
+        s.i++;
+        return true;
+      }
+    }
+    s.i++;
+  }
+  return false;
+}
+
 static std::string try_string(ScanState &s) {
   if (s.i >= s.src.size())
     return "";
@@ -186,8 +229,26 @@ static std::string peek_value_type(ScanState &s) {
   }
   if (c == 'n' && s.i + 4 <= s.src.size() && s.src.substr(s.i, 4) == "null")
     return "mixed";
-  if (c == '-' || std::isdigit(static_cast<unsigned char>(c)))
-    return "number";
+  if (c == '-' || std::isdigit(static_cast<unsigned char>(c))) {
+    size_t p = s.i;
+    if (s.src[p] == '-')
+      p++;
+    if (p < s.src.size() && s.src[p] == '0' && p + 1 < s.src.size() &&
+        (s.src[p + 1] == 'x' || s.src[p + 1] == 'X'))
+      return "int";  // hex literal
+    bool has_dot = false, has_exp = false;
+    while (p < s.src.size() &&
+           (std::isdigit(static_cast<unsigned char>(s.src[p])) ||
+            s.src[p] == '.' || s.src[p] == 'e' || s.src[p] == 'E' ||
+            (p > s.i && (s.src[p] == '+' || s.src[p] == '-')))) {
+      if (s.src[p] == '.')
+        has_dot = true;
+      else if (s.src[p] == 'e' || s.src[p] == 'E')
+        has_exp = true;
+      p++;
+    }
+    return (has_dot || has_exp) ? "float" : "int";
+  }
   return "mixed";
 }
 
@@ -382,6 +443,19 @@ void scan_file(ScanState &s) {
       }
       if (!key_raw.empty()) {
         skip_ws_and_line_comments(s);
+        std::string params;
+        bool is_function = (s.i < s.src.size() && s.src[s.i] == '(') &&
+                           copy_paren_group(s, params);
+        if (is_function) {
+          size_t p = 0;
+          while (p < params.size() && (params[p] == ' ' || params[p] == '\t'))
+            p++;
+          size_t q = params.size();
+          while (q > p && (params[q - 1] == ' ' || params[q - 1] == '\t'))
+            q--;
+          params = params.substr(p, q - p);
+        }
+        skip_ws_and_line_comments(s);
         bool has_colon = false;
         if (s.i < s.src.size() && s.src[s.i] == ':') {
           has_colon = true;
@@ -400,8 +474,10 @@ void scan_file(ScanState &s) {
           DocKey dk;
           dk.path = s.path;
           dk.key = key;
-          dk.type = value_type;
+          dk.type = is_function ? "function" : value_type;
           dk.doc = s.pending_doc;
+          if (is_function)
+            dk.function_params = params;
           s.keys.push_back(dk);
           s.pending_doc.clear();
           if (value_type == "object") {

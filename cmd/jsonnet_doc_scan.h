@@ -36,8 +36,10 @@ std::string sanitize_id(const std::string &key);
 struct DocKey {
   std::vector<std::string> path;
   std::string key;
-  std::string type;  // number, string, boolean, object, array, mixed
+  std::string type;  // number, string, boolean, object, array, mixed, function
   std::string doc;
+  /** When type == "function", comma-separated parameter names from key(...). */
+  std::string function_params;
 };
 
 /** File-level or scope-level doc block. */

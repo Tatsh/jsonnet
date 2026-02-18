@@ -36,9 +36,12 @@ limitations under the License.
 namespace {
 
 const char *cpp_type(const std::string &type) {
-  if (type == "number") return "double";
-  if (type == "string") return "std::string";
+  if (type == "int") return "int";
+  if (type == "float") return "float";
+  if (type == "number") return "double";  // fallback if scanner didn't distinguish
+  if (type == "string") return "string";
   if (type == "boolean") return "bool";
+  if (type == "function") return "mixed";  // function key, emit as declaration
   if (type == "object") return "mixed";
   if (type == "array") return "mixed";
   return "mixed";
@@ -75,56 +78,65 @@ void emit_doxygen(const std::string &filename, const std::string &content,
       break;
     }
   }
-  if (any_visible) {
-    out << "/** @namespace root\n";
-    out << " *  Root object of the Jsonnet file.\n";
-    out << " */\n\n";
-  }
+  if (!any_visible)
+    return;
 
-  std::vector<std::vector<std::string>> seen_namespaces;
+  std::string line_name = filename;
+  for (size_t i = 0; i < line_name.size(); ) {
+    if (line_name[i] == '\\') { line_name.insert(i, "\\"); i += 2; continue; }
+    if (line_name[i] == '"') { line_name.insert(i, "\\"); i += 2; continue; }
+    i++;
+  }
+  out << "#line 1 \"" << line_name << "\"\n";
+  std::vector<std::string> stack;
   for (const auto &dk : s.keys) {
     if (jsonnet_doc::should_skip_key(dk, include_private))
       continue;
-    for (size_t depth = 1; depth <= dk.path.size(); depth++) {
-      std::vector<std::string> p(dk.path.begin(), dk.path.begin() + depth);
-      bool seen = false;
-      for (const auto &sp : seen_namespaces) {
-        if (sp == p) {
-          seen = true;
-          break;
+    while (stack.size() > dk.path.size() ||
+           (stack.size() == dk.path.size() && stack != dk.path)) {
+      out << "}\n\n";
+      stack.pop_back();
+    }
+    std::string name = jsonnet_doc::sanitize_id(dk.key);
+    if (!dk.doc.empty()) {
+      out << "/**\n";
+      std::istringstream is(dk.doc);
+      std::string line;
+      while (std::getline(is, line))
+        out << " * " << line << "\n";
+      out << " */\n";
+    }
+    if (dk.type == "object") {
+      out << "namespace " << name << " {\n\n";
+      stack.push_back(dk.key);
+    } else if (dk.type == "function") {
+      out << "mixed " << name << "(";
+      std::istringstream ps(dk.function_params);
+      std::string p;
+      bool first = true;
+      while (std::getline(ps, p, ',')) {
+        size_t start = 0;
+        while (start < p.size() && (p[start] == ' ' || p[start] == '\t'))
+          start++;
+        size_t end = p.size();
+        while (end > start && (p[end - 1] == ' ' || p[end - 1] == '\t'))
+          end--;
+        p = p.substr(start, end - start);
+        if (!p.empty()) {
+          if (!first)
+            out << ", ";
+          out << "mixed " << jsonnet_doc::sanitize_id(p);
+          first = false;
         }
       }
-      if (!seen) {
-        seen_namespaces.push_back(p);
-        std::string ns = jsonnet_doc::scope_path(p, "");
-        out << "/** @namespace " << ns << "\n";
-        out << " *  Nested object scope.\n";
-        out << " */\n\n";
-      }
-    }
-
-    std::string full_scope = jsonnet_doc::scope_path(dk.path, dk.key);
-    if (dk.type == "object") {
-      out << "/** @struct " << full_scope << "\n";
-      if (!dk.doc.empty()) {
-        std::istringstream is(dk.doc);
-        std::string line;
-        while (std::getline(is, line))
-          out << " * " << line << "\n";
-      } else {
-        out << " *  Nested object.\n";
-      }
-      out << " */\n\n";
+      out << ");\n\n";
     } else {
-      out << "/** @var " << cpp_type(dk.type) << " " << full_scope << "\n";
-      if (!dk.doc.empty()) {
-        std::istringstream is(dk.doc);
-        std::string line;
-        while (std::getline(is, line))
-          out << " * " << line << "\n";
-      }
-      out << " */\n\n";
+      out << cpp_type(dk.type) << " " << name << ";\n\n";
     }
+  }
+  while (!stack.empty()) {
+    out << "}\n\n";
+    stack.pop_back();
   }
 }
 

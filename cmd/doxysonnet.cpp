@@ -66,10 +66,17 @@ void emit_doxygen(const std::string &filename, const std::string &content,
   jsonnet_doc::parse_file_to_doc_state(filename, content, s);
 
   bool has_file_block = false;
+  std::string top_level_namespace = "root";
+  std::string file_brief;
   for (const auto &b : s.file_blocks) {
     if (b.is_file) {
+      std::string file_doc = b.content;
+      std::string ns = jsonnet_doc::extract_namespace(file_doc);
+      if (!ns.empty())
+        top_level_namespace = jsonnet_doc::sanitize_id(ns);
+      file_brief = jsonnet_doc::extract_brief(file_doc);
       out << "/**\n";
-      std::istringstream is(b.content);
+      std::istringstream is(file_doc);
       std::string line;
       while (std::getline(is, line))
         out << " * " << escape_comment_line(line) << "\n";
@@ -101,7 +108,13 @@ void emit_doxygen(const std::string &filename, const std::string &content,
     i++;
   }
   out << "#line 1 \"" << line_name << "\"\n";
-  out << "namespace root {\n\n";
+  out << "/** @namespace " << top_level_namespace << "\n";
+  if (!file_brief.empty())
+    out << " *  @brief " << escape_comment_line(file_brief) << "\n";
+  else
+    out << " *  @brief Namespace for symbols from this file.\n";
+  out << " */\n";
+  out << "namespace " << top_level_namespace << " {\n\n";
   std::vector<std::string> stack;
   for (const auto &dk : s.keys) {
     if (jsonnet_doc::should_skip_key(dk, include_private))
@@ -163,7 +176,7 @@ void emit_doxygen(const std::string &filename, const std::string &content,
     out << "}\n\n";
     stack.pop_back();
   }
-  out << "}\n\n";  // close root namespace
+  out << "}\n\n";  // close top-level namespace
 }
 
 }  // namespace

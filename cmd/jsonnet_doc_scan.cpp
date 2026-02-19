@@ -166,6 +166,59 @@ std::vector<std::string> extract_pt_types(std::string &doc) {
   return found_types;
 }
 
+std::string extract_namespace(std::string &doc) {
+  std::istringstream is(doc);
+  std::string line;
+  std::string out_doc;
+  std::string found_name;
+  bool first = true;
+  while (std::getline(is, line)) {
+    std::string trimmed = trim_line_for_var(line);
+    if (found_name.empty() && trimmed.size() >= 11 &&
+        trimmed.compare(0, 11, "@namespace ") == 0) {
+      size_t start = 11;
+      while (start < trimmed.size() &&
+             (trimmed[start] == ' ' || trimmed[start] == '\t'))
+        start++;
+      size_t end = start;
+      while (end < trimmed.size() && trimmed[end] != ' ' && trimmed[end] != '\t')
+        end++;
+      found_name = trimmed.substr(start, end - start);
+      continue;
+    }
+    if (!first)
+      out_doc += '\n';
+    first = false;
+    out_doc += line;
+  }
+  if (!found_name.empty())
+    doc = out_doc;
+  return found_name;
+}
+
+std::string extract_brief(const std::string &doc) {
+  std::istringstream is(doc);
+  std::string line;
+  while (std::getline(is, line)) {
+    std::string trimmed = trim_line_for_var(line);
+    if (trimmed.size() >= 7 && trimmed.compare(0, 7, "@brief ") == 0) {
+      size_t start = 7;
+      while (start < trimmed.size() &&
+             (trimmed[start] == ' ' || trimmed[start] == '\t'))
+        start++;
+      return trimmed.substr(start);
+    }
+    if (trimmed.size() >= 7 && trimmed.compare(0, 7, "\\brief ") == 0) {
+      size_t start = 7;
+      while (start < trimmed.size() &&
+             (trimmed[start] == ' ' || trimmed[start] == '\t'))
+        start++;
+      return trimmed.substr(start);
+    }
+  }
+  return "";
+}
+
 std::string sanitize_id(const std::string &key) {
   std::string out;
   for (size_t i = 0; i < key.size(); i++) {

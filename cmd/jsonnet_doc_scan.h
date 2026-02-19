@@ -44,6 +44,16 @@ std::string extract_rv_type(std::string &doc);
  */
 std::vector<std::string> extract_pt_types(std::string &doc);
 
+/** If doc contains a line \"@namespace <name>\", remove that line and return the name
+ *  (single token, no spaces); otherwise return empty string.
+ */
+std::string extract_namespace(std::string &doc);
+
+/** If doc contains a line \"@brief ...\" or \"\\brief ...\", return the rest of that
+ *  line (trimmed); otherwise return empty string. Does not modify doc.
+ */
+std::string extract_brief(const std::string &doc);
+
 /** Sanitize a key for use as identifier (C++ or ReST). */
 std::string sanitize_id(const std::string &key);
 

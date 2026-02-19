@@ -18,6 +18,7 @@ limitations under the License.
 
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include "core/ast.h"
 #include "core/lexer.h"
@@ -155,10 +156,39 @@ static AST *doc_root_object(AST *ast) {
   return (ast && ast->type == AST_OBJECT) ? ast : nullptr;
 }
 
+/** Return the substring of content covered by loc (line/column 1-based). */
+static std::string location_range_to_source(const std::string &content,
+                                            const LocationRange &loc) {
+  if (!loc.isSet() || content.empty())
+    return "";
+  std::vector<size_t> line_starts;
+  line_starts.push_back(0);
+  for (size_t i = 0; i < content.size(); ++i) {
+    if (content[i] == '\n')
+      line_starts.push_back(i + 1);
+  }
+  if (loc.begin.line == 0 || loc.begin.line > line_starts.size())
+    return "";
+  size_t start_offset =
+      line_starts[loc.begin.line - 1] + (loc.begin.column > 0 ? loc.begin.column - 1 : 0);
+  size_t end_offset;
+  if (loc.end.line == 0 || loc.end.line > line_starts.size())
+    end_offset = content.size();
+  else
+    end_offset =
+        line_starts[loc.end.line - 1] + (loc.end.column > 0 ? loc.end.column - 1 : 0);
+  if (start_offset >= end_offset || start_offset >= content.size())
+    return "";
+  if (end_offset > content.size())
+    end_offset = content.size();
+  return content.substr(start_offset, end_offset - start_offset);
+}
+
 /** Recursively collect DocKeys from an object; path is the current path. */
 static void collect_object_fields(AST *ast, std::vector<std::string> &path,
                                   std::vector<DocBlock> &file_blocks,
-                                  std::vector<DocKey> &keys, bool top_level) {
+                                  std::vector<DocKey> &keys, bool top_level,
+                                  const std::string &content) {
   if (!ast || ast->type != AST_OBJECT)
     return;
   auto *obj = static_cast<Object *>(ast);
@@ -199,11 +229,15 @@ static void collect_object_fields(AST *ast, std::vector<std::string> &path,
     dk.type = type;
     dk.doc = doc;
     dk.function_params = function_params;
+    if (!field.methodSugar && type != "function" && field.expr2 &&
+        field.expr2->location.isSet()) {
+      dk.value_verbatim = location_range_to_source(content, field.expr2->location);
+    }
     keys.push_back(dk);
 
     if (type == "object" && field.expr2 && field.expr2->type == AST_OBJECT) {
       path.push_back(key);
-      collect_object_fields(field.expr2, path, file_blocks, keys, false);
+      collect_object_fields(field.expr2, path, file_blocks, keys, false, content);
       path.pop_back();
     }
   }
@@ -223,7 +257,7 @@ void parse_file_to_doc_state(const std::string &filename,
     if (!root_obj)
       return;
     std::vector<std::string> path;
-    collect_object_fields(root_obj, path, s.file_blocks, s.keys, true);
+    collect_object_fields(root_obj, path, s.file_blocks, s.keys, true, content);
   } catch (const StaticError &) {
     return;
   }

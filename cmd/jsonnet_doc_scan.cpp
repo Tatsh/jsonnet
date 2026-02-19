@@ -650,8 +650,7 @@ void scan_file(ScanState &s) {
           dk.doc = s.pending_doc;
           if (is_function)
             dk.function_params = params;
-          s.keys.push_back(dk);
-          s.pending_doc.clear();
+          size_t value_start = s.i;
           if (value_type == "object") {
             skip_ws_and_line_comments(s);
             if (s.i < s.src.size() && s.src[s.i] == '{') {
@@ -660,10 +659,16 @@ void scan_file(ScanState &s) {
               s.path.push_back(key);
             } else {
               skip_value(s);
+              if (!is_function)
+                dk.value_verbatim = s.src.substr(value_start, s.i - value_start);
             }
           } else {
             skip_value(s);
+            if (!is_function)
+              dk.value_verbatim = s.src.substr(value_start, s.i - value_start);
           }
+          s.keys.push_back(dk);
+          s.pending_doc.clear();
           continue;
         }
       }

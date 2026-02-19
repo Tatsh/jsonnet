@@ -65,6 +65,8 @@ struct DocKey {
   std::string doc;
   /** When type == "function", comma-separated parameter names from key(...). */
   std::string function_params;
+  /** Verbatim source of the value (unevaluated). Empty for functions; optional in scanner for nested objects. */
+  std::string value_verbatim;
 };
 
 /** File-level or scope-level doc block. */

@@ -23,6 +23,7 @@ limitations under the License.
  * C++-style docblocks to stdout. Intended for use with Doxygen FILTER_PATTERNS.
  */
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -40,6 +41,100 @@ std::string cpp_type(const std::string &type) {
   if (type == "boolean") return "bool";
   if (type == "function" || type == "object" || type == "array") return "mixed";
   return type;
+}
+
+/** Strip line (// and #) and block (slash-star star-slash) comments from Jsonnet source; leaves string literals unchanged. */
+static std::string strip_comments_from_jsonnet(const std::string &s) {
+  std::string out;
+  out.reserve(s.size());
+  size_t i = 0;
+  while (i < s.size()) {
+    if (s[i] == '"' || s[i] == '\'') {
+      char q = s[i];
+      out += s[i++];
+      while (i < s.size()) {
+        if (s[i] == '\\' && i + 1 < s.size()) {
+          out += s[i++];
+          out += s[i++];
+          continue;
+        }
+        if (s[i] == q) {
+          out += s[i++];
+          break;
+        }
+        out += s[i++];
+      }
+      continue;
+    }
+    if (s[i] == '|') {
+      out += s[i++];
+      while (i < s.size() && s[i] != '|')
+        out += s[i++];
+      if (i < s.size())
+        out += s[i++];
+      continue;
+    }
+    if (i + 1 < s.size() && s[i] == '/' && s[i + 1] == '/') {
+      i += 2;
+      while (i < s.size() && s[i] != '\n')
+        i++;
+      if (i < s.size())
+        i++;
+      continue;
+    }
+    if (i + 1 < s.size() && s[i] == '/' && s[i + 1] == '*') {
+      i += 2;
+      while (i + 1 < s.size() && !(s[i] == '*' && s[i + 1] == '/'))
+        i++;
+      if (i + 1 < s.size())
+        i += 2;
+      if (i < s.size() && s[i] == '\n')
+        i++;
+      continue;
+    }
+    if (s[i] == '#') {
+      while (i < s.size() && s[i] != '\n')
+        i++;
+      if (i < s.size())
+        i++;
+      continue;
+    }
+    out += s[i++];
+  }
+  return out;
+}
+
+/** Remove leading whitespace so opening and closing braces align; use last line indent as base. */
+static std::string normalize_indent_multiline(const std::string &s) {
+  if (s.find('\n') == std::string::npos)
+    return s;
+  std::istringstream is(s);
+  std::string line;
+  std::vector<std::string> lines;
+  while (std::getline(is, line))
+    lines.push_back(line);
+  if (lines.empty())
+    return s;
+  size_t base = 0;
+  {
+    const std::string &last = lines.back();
+    while (base < last.size() && (last[base] == ' ' || last[base] == '\t'))
+      base++;
+  }
+  if (base == 0)
+    return s;
+  std::string out;
+  for (size_t j = 0; j < lines.size(); ++j) {
+    const std::string &ln = lines[j];
+    size_t i = 0;
+    while (i < ln.size() && (ln[i] == ' ' || ln[i] == '\t'))
+      i++;
+    size_t strip = std::min(base, i);
+    if (j != 0)
+      out += '\n';
+    out += ln.substr(strip);
+  }
+  return out;
 }
 
 /** Escape star-slash and slash-star in comment lines so C++ block comment stays valid. */
@@ -132,12 +227,36 @@ void emit_doxygen(const std::string &filename, const std::string &content,
       rv_type = jsonnet_doc::extract_rv_type(doc_for_comment);
       pt_types = jsonnet_doc::extract_pt_types(doc_for_comment);
     }
-    if (!doc_for_comment.empty()) {
+    if (!doc_for_comment.empty() || (dk.type != "function" && !dk.value_verbatim.empty())) {
       out << "/**\n";
-      std::istringstream is(doc_for_comment);
-      std::string line;
-      while (std::getline(is, line))
-        out << " * " << escape_comment_line(line) << "\n";
+      if (!doc_for_comment.empty()) {
+        std::istringstream is(doc_for_comment);
+        std::string line;
+        while (std::getline(is, line))
+          out << " * " << escape_comment_line(line) << "\n";
+      }
+      if (dk.type != "function" && !dk.value_verbatim.empty()) {
+        std::string code_value = strip_comments_from_jsonnet(dk.value_verbatim);
+        code_value = normalize_indent_multiline(code_value);
+        bool multiline = code_value.find('\n') != std::string::npos;
+        out << " * <dl class=\"section default-value\">\n";
+        out << " * <dt>Default value</dt>\n";
+        out << " * <dd>\n";
+        out << " * @code\n";
+        if (multiline) {
+          std::istringstream vs(code_value);
+          std::string vline;
+          while (std::getline(vs, vline))
+            out << " * " << escape_comment_line(vline) << "\n";
+        } else {
+          out << " * "
+              << escape_comment_line(code_value)
+              << "\n";
+        }
+        out << " * @endcode\n";
+        out << " * </dd>\n";
+        out << " * </dl>\n";
+      }
       out << " */\n";
     }
     if (dk.type == "object") {

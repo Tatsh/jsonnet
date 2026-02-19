@@ -168,7 +168,7 @@ void emit_doxygen(const std::string &filename, const std::string &content,
       std::string file_doc = b.content;
       std::string ns = jsonnet_doc::extract_namespace(file_doc);
       if (!ns.empty())
-        top_level_namespace = jsonnet_doc::sanitize_id(ns);
+        top_level_namespace = jsonnet_doc::sanitize_namespace(ns);
       file_brief = jsonnet_doc::extract_brief(file_doc);
       out << "/**\n";
       std::istringstream is(file_doc);

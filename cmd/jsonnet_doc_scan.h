@@ -57,6 +57,9 @@ std::string extract_brief(const std::string &doc);
 /** Sanitize a key for use as identifier (C++ or ReST). */
 std::string sanitize_id(const std::string &key);
 
+/** Sanitize a namespace from @namespace for C++; preserves \"::\" between segments. */
+std::string sanitize_namespace(const std::string &ns);
+
 /** Documented key in the hierarchy. */
 struct DocKey {
   std::vector<std::string> path;

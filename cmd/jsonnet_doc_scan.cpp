@@ -235,6 +235,25 @@ std::string sanitize_id(const std::string &key) {
   return out;
 }
 
+std::string sanitize_namespace(const std::string &ns) {
+  if (ns.empty())
+    return "root";
+  std::string out;
+  size_t i = 0;
+  while (i < ns.size()) {
+    size_t seg_start = i;
+    while (i < ns.size() && !(i + 1 < ns.size() && ns[i] == ':' && ns[i + 1] == ':'))
+      i++;
+    std::string seg = ns.substr(seg_start, i - seg_start);
+    if (!out.empty())
+      out += "::";
+    out += sanitize_id(seg);
+    if (i + 2 <= ns.size() && ns[i] == ':' && ns[i + 1] == ':')
+      i += 2;
+  }
+  return out.empty() ? "root" : out;
+}
+
 static void skip_ws_and_line_comments(ScanState &s) {
   while (s.i < s.src.size()) {
     if (s.src[s.i] == '/' && s.i + 1 < s.src.size() && s.src[s.i + 1] == '/') {
